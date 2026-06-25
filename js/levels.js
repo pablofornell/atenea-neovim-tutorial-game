@@ -1,0 +1,242 @@
+/* ======================================================================
+   CURRICULUM — every level teaches a piece of THIS init.lua
+   ====================================================================== */
+function L(o){ return Object.assign({par:null},o); }
+const LEVELS=[
+{group:"Survival"},
+L({title:"Insert & escape",
+  goal:"Press i, type anything, then leave insert with <C-c>",
+  buf:["function greet()","    -- put your name here","end"], cur:{row:1,col:7},
+  lesson:`<h2>Modes & the <code>C-c</code> remap</h2><div class="sub">remap.lua</div>
+  <p>Neovim starts in <b>NORMAL</b> mode — keys are commands, not text. Press <kbd>i</kbd> to <b>insert</b>.</p>
+  <div class="card do"><h3>Try it</h3>Press <kbd>i</kbd>, type a few letters, then press <kbd>Ctrl</kbd>+<kbd>c</kbd>.</div>
+  <div class="card"><h3>Your swap: i ⇄ a</h3><kbd>i</kbd> inserts <b>after</b> the character and <kbd>a</kbd> <b>before</b> it — the inverse of stock vim.
+  <div class="why">The green caret lands just right of the char after <kbd>i</kbd>, and just left of it after <kbd>a</kbd>.</div></div>
+  <div class="card"><h3>Why this config?</h3>This init.lua maps <code>&lt;C-c&gt;</code> → <code>&lt;Esc&gt;</code> in insert mode:
+  <div class="why">vim.keymap.set("i","&lt;C-c&gt;","&lt;Esc&gt;") — "This is going to get me cancelled."</div></div>`,
+  check:()=>S.enteredInsert && S.keyLog.includes("<C-c>") && S.mode==="normal"}),
+
+L({title:"Move with j k l ñ",
+  goal:"Walk the cursor onto the ★ — use j k l ñ, no arrow keys!",
+  buf:["+----------------+","|  . . . . . .   |","|  . . . . ★ .   |","|  . . . . . .   |","+----------------+"],
+  cur:{row:1,col:3}, target:{row:2,col:12}, par:9,
+  lesson:`<h2>Your home row: <kbd>j</kbd><kbd>k</kbd><kbd>l</kbd><kbd>ñ</kbd></h2><div class="sub">your remap — hjkl shifted one key right</div>
+  <ul class="keylist">
+   <li><kbd>j</kbd><span class="d">left</span></li><li><kbd>k</kbd><span class="d">down</span></li>
+   <li><kbd>l</kbd><span class="d">up</span></li><li><kbd>ñ</kbd><span class="d">right</span></li></ul>
+  <div class="card do"><h3>Goal</h3>Land the cursor exactly on the ★. Press <kbd>k</kbd> to go down, then <kbd>ñ</kbd> to go right.</div>
+  <p class="why">Arrow keys — and <kbd>h</kbd> — are disabled on purpose, so the new habit sticks.</p>`,
+  check:()=>S.cursor.row===2 && S.cursor.col===12}),
+
+L({title:"Word motions w b e",
+  goal:"Move RIGHT with b until you land on 'fortytwo'",
+  buf:["const answer = compute(value, fortytwo)"], cur:{row:0,col:0}, par:7,
+  lesson:`<h2>Word hops: <kbd>w</kbd> <kbd>b</kbd> <kbd>e</kbd></h2><div class="sub">your swap — w and b are flipped</div>
+  <ul class="keylist"><li><kbd>b</kbd><span class="d">next word — moves <b>RIGHT</b></span></li>
+  <li><kbd>w</kbd><span class="d">previous word — moves <b>LEFT</b></span></li>
+  <li><kbd>e</kbd><span class="d">end of the next word</span></li></ul>
+  <div class="card do"><h3>Goal</h3>The cursor starts at the beginning. Press <kbd>b</kbd> to hop <b>right</b>, word by word, until you reach <code>fortytwo</code>.</div>
+  <p class="why">In stock vim <code>w</code> goes forward and <code>b</code> back — here they're swapped, so <kbd>b</kbd>=right, <kbd>w</kbd>=left.</p>`,
+  check:()=>curLine().slice(S.cursor.col,S.cursor.col+8)==="fortytwo"}),
+
+L({title:"Line ends: 0 ^ $",
+  goal:"Jump to the LAST character of the line with $",
+  buf:["    return value + offset   "], cur:{row:0,col:8}, par:1,
+  lesson:`<h2><kbd>0</kbd> <kbd>^</kbd> <kbd>$</kbd></h2><div class="sub">core vim</div>
+  <ul class="keylist"><li><kbd>0</kbd><span class="d">first column</span></li>
+  <li><kbd>^</kbd><span class="d">first non-blank</span></li>
+  <li><kbd>$</kbd><span class="d">end of line</span></li></ul>
+  <div class="card do"><h3>Goal</h3>Press <kbd>$</kbd> to fly to the end of the line.</div>`,
+  check:()=>S.cursor.col===maxCol() && S.keyLog.includes("$")}),
+
+L({title:"Top & bottom: gg / G",
+  goal:"Go to the last line with G, then back to the top with gg",
+  buf:["line 1 — top","line 2","line 3","line 4","line 5 — bottom"], cur:{row:0,col:0}, par:2,
+  lesson:`<h2><kbd>g</kbd><kbd>g</kbd> and <kbd>G</kbd></h2><div class="sub">core vim</div>
+  <p><kbd>G</kbd> jumps to the last line, <kbd>g</kbd><kbd>g</kbd> to the first.</p>
+  <div class="card do"><h3>Goal</h3>Press <kbd>G</kbd> then <kbd>gg</kbd> — end back on line 1.</div>`,
+  check:()=>S.keyLog.includes("G") && S.keyLog.includes("gg") && S.cursor.row===0}),
+
+{group:"The Primeagen Touch"},
+L({title:"Centered scrolling",
+  goal:"Press <C-d> to fly half a page down — watch it re-center",
+  buf:Array.from({length:40},(_,i)=>`${(i+1).toString().padStart(2)}  line of a long file`),
+  cur:{row:0,col:0}, par:2,
+  lesson:`<h2><kbd>Ctrl</kbd>+<kbd>d</kbd> / <kbd>Ctrl</kbd>+<kbd>u</kbd></h2><div class="sub">remap.lua</div>
+  <p>Vanilla vim scrolls and leaves your cursor at the edge. This config keeps you centered:</p>
+  <div class="card"><code>&lt;C-d&gt; → &lt;C-d&gt;zz</code><br><code>&lt;C-u&gt; → &lt;C-u&gt;zz</code>
+  <div class="why">The <code>zz</code> recenters the screen so your eyes never lose the cursor.</div></div>
+  <div class="card do"><h3>Goal</h3>Press <kbd>Ctrl</kbd>+<kbd>d</kbd> at least once.</div>`,
+  check:()=>S.keyLog.includes("<C-d>") && S.cursor.row>=8}),
+
+L({title:"Centered search: n / N",
+  goal:"Search 'TODO' with / then jump matches with n",
+  buf:["fn a(){}","// TODO: refactor a","fn b(){}","fn c(){}","// TODO: write tests","fn d(){}","// TODO: ship it"],
+  cur:{row:0,col:0}, par:null,
+  lesson:`<h2>Search, then <kbd>n</kbd> / <kbd>N</kbd></h2><div class="sub">remap.lua</div>
+  <p>Press <kbd>/</kbd>, type a pattern, <kbd>Enter</kbd>. Then <kbd>n</kbd> repeats forward, <kbd>N</kbd> backward.</p>
+  <div class="card"><code>n → nzzzv</code> &nbsp; <code>N → Nzzzv</code>
+  <div class="why">Again the trailing <code>zz</code>: every match lands dead-center. <code>zv</code> opens folds.</div></div>
+  <div class="card do"><h3>Goal</h3>Type <kbd>/</kbd><code>TODO</code><kbd>Enter</kbd>, then press <kbd>n</kbd> to reach a later TODO.</div>`,
+  check:()=>S.keyLog.includes("n") && curLine().includes("TODO") && S.cursor.row>=4}),
+
+L({title:"Join lines with J",
+  goal:"Join the two lines into one with J",
+  buf:["const sum = 1","    + 2 + 3"], cur:{row:0,col:0}, par:1,
+  lesson:`<h2><kbd>J</kbd> — join, cursor stays put</h2><div class="sub">remap.lua</div>
+  <p><kbd>J</kbd> joins the next line onto this one. Vanilla vim moves your cursor to the seam; this config pins it:</p>
+  <div class="card"><code>J → mzJ`+"`"+`z</code>
+  <div class="why">Sets mark <code>z</code>, joins, then jumps back to <code>z</code> — cursor doesn't budge.</div></div>
+  <div class="card do"><h3>Goal</h3>Press <kbd>J</kbd> to make <code>const sum = 1 + 2 + 3</code>.</div>`,
+  check:()=>S.lines.length===1 && S.lines[0].replace(/\s+/g," ").trim()==="const sum = 1 + 2 + 3"}),
+
+L({title:"Move lines in visual: J / K",
+  goal:"Reorder the steps to 1,2,3,4 by moving lines in V-LINE mode",
+  buf:["step 1","step 3","step 2","step 4"], cur:{row:1,col:0}, par:null,
+  lesson:`<h2>The signature remap: <kbd>J</kbd>/<kbd>K</kbd> in visual</h2><div class="sub">remap.lua</div>
+  <p>Select lines with <kbd>V</kbd>, then <kbd>J</kbd> drags them <b>down</b> and <kbd>K</kbd> drags them <b>up</b> — auto-reindenting.</p>
+  <div class="card"><code>vmap J :m '>+1&lt;CR&gt;gv=gv</code><br><code>vmap K :m '&lt;-2&lt;CR&gt;gv=gv</code></div>
+  <div class="card do"><h3>Goal</h3>On "step 3": press <kbd>V</kbd> then <kbd>J</kbd> to push it below "step 2". End with steps in order.</div>`,
+  check:()=>S.lines.join("|")==="step 1|step 2|step 3|step 4"}),
+
+L({title:"The greatest remap: <leader>p",
+  goal:"Replace both FOO with the yanked WORLD — register stays intact",
+  buf:["greeting = FOO","farewell = FOO"], cur:{row:0,col:11}, par:null,
+  preReg:{text:"WORLD",linewise:false},
+  lesson:`<h2>“The greatest remap ever”: <kbd>Space</kbd><kbd>p</kbd></h2><div class="sub">remap.lua</div>
+  <p>Normally, pasting <b>over</b> a visual selection clobbers your yank with the deleted text — so you can't paste it again. This config fixes it:</p>
+  <div class="card"><code>xmap &lt;leader&gt;p "_dP</code>
+  <div class="why">Delete the selection to the black-hole register <code>"_</code>, then paste — your yank survives.</div></div>
+  <div class="card do"><h3>Goal</h3>You've already yanked <code>WORLD</code>. Visually select each <code>FOO</code> (<kbd>v</kbd> <kbd>e</kbd>) and press <kbd>Space</kbd><kbd>p</kbd>. The second paste proves the register wasn't lost.</div>`,
+  check:()=>S.lines[0]==="greeting = WORLD" && S.lines[1]==="farewell = WORLD" &&
+           S.keyLog.filter(k=>k==="<leader>p").length>=2}),
+
+L({title:"Void delete: <leader>d",
+  goal:"Delete the word JUNK without clobbering your yank (Space d)",
+  buf:["keep_this = JUNK + payload"], cur:{row:12,col:0}, preReg:{text:"GOLD",linewise:false},
+  lesson:`<h2><kbd>Space</kbd><kbd>d</kbd> — delete to the black hole</h2><div class="sub">remap.lua</div>
+  <p><code>{n,v} &lt;leader&gt;d → "_d</code>. Deletes text but throws it into the void register, so whatever you yanked earlier stays ready to paste.</p>
+  <div class="card do"><h3>Goal</h3>Move onto <code>JUNK</code>, select it (<kbd>v</kbd> <kbd>e</kbd>), press <kbd>Space</kbd><kbd>d</kbd>.</div>
+  <p class="why">Sibling map: <code>&lt;leader&gt;y → "+y</code> yanks to the system clipboard.</p>`,
+  check:()=>!curLine().includes("JUNK") && S.keyLog.includes("<leader>d")}),
+
+L({title:"Substitute word: <leader>s",
+  goal:"Replace every 'foo' with 'bar' via Space s",
+  buf:["foo = foo + 1","print(foo)","return foo"], cur:{row:0,col:0},
+  lesson:`<h2><kbd>Space</kbd><kbd>s</kbd> — rename the word under cursor</h2><div class="sub">remap.lua</div>
+  <p>Puts you in a ready-made global substitute for the word under the cursor:</p>
+  <div class="card"><code>:%s/\\&lt;word\\&gt;/word/gI</code>
+  <div class="why">The word is pre-filled on both sides — just type the replacement and hit Enter.</div></div>
+  <div class="card do"><h3>Goal</h3>Cursor on <code>foo</code>, press <kbd>Space</kbd><kbd>s</kbd>, type <code>bar</code>, press <kbd>Enter</kbd>.</div>`,
+  check:()=>!S.lines.join("").includes("foo") && S.lines.join("").includes("bar")}),
+
+{group:"Power tools"},
+L({title:"netrw: <leader>pv",
+  goal:"Open the file explorer with Space pv",
+  buf:["-- press  Space p v  to open netrw","-- (esc / C-c closes it)"], cur:{row:0,col:0},
+  lesson:`<h2><kbd>Space</kbd><kbd>p</kbd><kbd>v</kbd> — netrw</h2><div class="sub">remap.lua</div>
+  <p><code>&lt;leader&gt;pv → :Ex</code> opens Neovim's built-in file explorer in the current directory.</p>
+  <div class="card do"><h3>Goal</h3>Press <kbd>Space</kbd><kbd>p</kbd><kbd>v</kbd>.</div>`,
+  check:()=>S.keyLog.includes("<leader>pv")}),
+
+L({title:"Telescope find_files & git_files",
+  goal:"Fuzzy-find files: Space p f, then git files with Ctrl-p",
+  buf:["-- Space p f  → find_files","-- Ctrl  p    → git_files"], cur:{row:0,col:0},
+  lesson:`<h2>Telescope</h2><div class="sub">lazy/telescope.lua</div>
+  <ul class="keylist"><li><kbd>Space p f</kbd><span class="d">find_files (everything)</span></li>
+  <li><kbd>Ctrl p</kbd><span class="d">git_files (tracked only)</span></li>
+  <li><kbd>Space p s</kbd><span class="d">live grep</span></li>
+  <li><kbd>Space p w s</kbd><span class="d">grep word under cursor</span></li>
+  <li><kbd>Space v h</kbd><span class="d">help tags</span></li></ul>
+  <div class="card do"><h3>Goal</h3>Press <kbd>Space p f</kbd>, close it, then <kbd>Ctrl</kbd>+<kbd>p</kbd>.</div>`,
+  check:()=>S.keyLog.includes("<leader>pf") && S.keyLog.includes("<C-p>")}),
+
+L({title:"Grep the project: <leader>ps",
+  goal:"Open live grep with Space p s",
+  buf:["-- Space p s  → grep across the whole project"], cur:{row:0,col:0},
+  lesson:`<h2><kbd>Space</kbd><kbd>p</kbd><kbd>s</kbd> — live grep</h2><div class="sub">lazy/telescope.lua</div>
+  <p>Prompts for a search string and greps the entire project (needs <code>ripgrep</code>).
+  <code>&lt;leader&gt;pws</code> greps the word already under your cursor.</p>
+  <div class="card do"><h3>Goal</h3>Press <kbd>Space</kbd><kbd>p</kbd><kbd>s</kbd>.</div>`,
+  check:()=>S.keyLog.includes("<leader>ps")}),
+
+L({title:"UndoTree: <leader>u",
+  goal:"Open the undo history with Space u",
+  buf:["-- Space u  → time-travel through every edit"], cur:{row:0,col:0},
+  lesson:`<h2><kbd>Space</kbd><kbd>u</kbd> — UndoTree</h2><div class="sub">lazy/undotree.lua</div>
+  <p>Neovim's undo is a <i>tree</i>, not a line. UndoTree visualises every branch so you can recover edits a plain <kbd>u</kbd> would lose.</p>
+  <div class="card do"><h3>Goal</h3>Press <kbd>Space</kbd><kbd>u</kbd>.</div>`,
+  check:()=>S.keyLog.includes("<leader>u")}),
+
+L({title:"fugitive: <leader>gs",
+  goal:"Open git status with Space g s",
+  buf:["-- Space g s  → :Git status","-- in there: Space p = push, Space P = pull --rebase"], cur:{row:0,col:0},
+  lesson:`<h2><kbd>Space</kbd><kbd>g</kbd><kbd>s</kbd> — fugitive</h2><div class="sub">lazy/fugitive.lua</div>
+  <p><code>&lt;leader&gt;gs → :Git</code> opens the status buffer: stage with <kbd>s</kbd>, commit with <kbd>cc</kbd>.</p>
+  <ul class="keylist"><li><kbd>Space p</kbd><span class="d">:Git push (in status buffer)</span></li>
+  <li><kbd>Space P</kbd><span class="d">:Git pull --rebase</span></li>
+  <li><kbd>gu</kbd> / <kbd>gh</kbd><span class="d">diffget //2 //3 (merge conflicts)</span></li></ul>
+  <div class="card do"><h3>Goal</h3>Press <kbd>Space</kbd><kbd>g</kbd><kbd>s</kbd>.</div>`,
+  check:()=>S.keyLog.includes("<leader>gs")}),
+
+L({title:"Trouble & quickfix",
+  goal:"Toggle Trouble with Space t t, then step quickfix with Ctrl-k",
+  buf:["fn broken() {","  undefined_var","}","fn also_broken(){}"], cur:{row:0,col:0},
+  lesson:`<h2>Diagnostics navigation</h2><div class="sub">lazy/trouble.lua + remap.lua</div>
+  <ul class="keylist"><li><kbd>Space t t</kbd><span class="d">toggle Trouble panel</span></li>
+  <li><kbd>]t</kbd> / <kbd>[t</kbd><span class="d">next / prev item</span></li>
+  <li><kbd>Ctrl k</kbd> / <kbd>Ctrl j</kbd><span class="d">:cnext / :cprev (quickfix, centered)</span></li></ul>
+  <div class="card do"><h3>Goal</h3>Press <kbd>Space t t</kbd>, close it, then <kbd>Ctrl</kbd>+<kbd>k</kbd>.</div>`,
+  check:()=>S.keyLog.includes("<leader>tt") && S.keyLog.includes("<C-k>")}),
+
+{group:"Workflow & plugins"},
+L({title:"Harpoon: pin & jump",
+  goal:"Pin this file (Space a), open the menu (Ctrl e), then jump with Space 1",
+  buf:["-- Harpoon = bookmark your handful of hot files","-- then teleport between them by number","-- (this lives in local.lua → ~/personal/harpoon)"], cur:{row:0,col:0},
+  lesson:`<h2>Harpoon — your hot files</h2><div class="sub">local.lua · ThePrimeagen's own fork</div>
+  <p>Harpoon pins the few files you bounce between constantly, then jumps to them by number — no fuzzy-finding, no thinking.</p>
+  <ul class="keylist">
+   <li><kbd>Space a</kbd><span class="d">add current file to the list</span></li>
+   <li><kbd>Space A</kbd><span class="d">prepend (add to the front)</span></li>
+   <li><kbd>Ctrl e</kbd><span class="d">open the quick menu</span></li>
+   <li><kbd>Space 1</kbd>…<kbd>Space 4</kbd><span class="d">jump straight to file 1–4</span></li></ul>
+  <div class="card do"><h3>Goal</h3>Press <kbd>Space</kbd><kbd>a</kbd> to pin, <kbd>Ctrl</kbd>+<kbd>e</kbd> to open the menu, then press <kbd>1</kbd> <b>inside the menu</b> to jump to file 1. <br>(Or close the menu with <kbd>Esc</kbd> and jump straight from normal mode with <kbd>Space</kbd><kbd>1</kbd>.)</div>
+  <p class="why">Jump straight to a pinned file from normal mode with <kbd>Space</kbd>+number — no menu needed.</p>`,
+  check:()=>S.keyLog.includes("<leader>a") && S.keyLog.includes("<C-e>") && S.keyLog.includes("<leader>1")}),
+
+L({title:"LSP completion (cmp)",
+  goal:"Complete the word: A → Ctrl Space → Ctrl n → Ctrl y",
+  buf:["local result = comp"], cur:{row:0,col:18},
+  lesson:`<h2>nvim-cmp completion</h2><div class="sub">lazy/lsp.lua</div>
+  <p>The autocomplete popup is driven entirely from the home row:</p>
+  <ul class="keylist">
+   <li><kbd>Ctrl Space</kbd><span class="d">trigger completion</span></li>
+   <li><kbd>Ctrl n</kbd> / <kbd>Ctrl p</kbd><span class="d">next / previous item</span></li>
+   <li><kbd>Ctrl y</kbd><span class="d">confirm the selection</span></li></ul>
+  <div class="card do"><h3>Goal</h3>Press <kbd>A</kbd> to append, <kbd>Ctrl</kbd>+<kbd>Space</kbd> to pop the menu, <kbd>Ctrl</kbd>+<kbd>n</kbd> to pick an item, then <kbd>Ctrl</kbd>+<kbd>y</kbd> to accept it.</div>
+  <p class="why">cmp uses Select behavior — <kbd>Ctrl n</kbd> only highlights; nothing is inserted until <kbd>Ctrl y</kbd>.</p>`,
+  check:()=>S.lines[0].startsWith("local result = comp") && S.lines[0].length>"local result = comp".length
+            && S.keyLog.includes("<C-Space>") && S.keyLog.includes("<C-y>")}),
+
+L({title:"Treesitter text objects",
+  goal:"Delete the whole function with d a f (delete-around-function)",
+  buf:["-- keep this comment","local function add(a, b)","    return a + b","end","-- and this comment"], cur:{row:1,col:6},
+  lesson:`<h2>Function text objects: <kbd>af</kbd> / <kbd>if</kbd></h2><div class="sub">lazy/treesitter.lua</div>
+  <p>Treesitter gives you <i>structural</i> text objects you can pair with any operator:</p>
+  <ul class="keylist">
+   <li><kbd>d a f</kbd><span class="d">delete <b>a</b>round <b>f</b>unction (signature + body)</span></li>
+   <li><kbd>d i f</kbd><span class="d">delete <b>i</b>nner function (just the body)</span></li>
+   <li><kbd>c i f</kbd> · <kbd>y a f</kbd><span class="d">change the body · yank the whole function</span></li></ul>
+  <div class="card"><code>keymaps = { ["af"]="@function.outer", ["if"]="@function.inner" }</code></div>
+  <div class="card do"><h3>Goal</h3>Cursor is inside the function — press <kbd>d</kbd>, then <kbd>a</kbd>, then <kbd>f</kbd>.</div>`,
+  check:()=>S.lines.length===2 && !S.lines.join(" ").includes("function") && S.keyLog.includes("daf")}),
+
+L({title:"Reload config: <leader><leader>",
+  goal:"Re-source the config with Space Space — graduation!",
+  buf:["-- You've learned the whole config.","-- One last reflex: Space Space  → :so","-- (re-sources the current file)"], cur:{row:0,col:0},
+  lesson:`<h2><kbd>Space</kbd><kbd>Space</kbd> — re-source</h2><div class="sub">remap.lua</div>
+  <p><code>&lt;leader&gt;&lt;leader&gt; → :so</code> sources the current file — instant config reload while you tweak your init.lua.</p>
+  <div class="card do"><h3>Final goal</h3>Press <kbd>Space</kbd><kbd>Space</kbd>. 🎓</div>
+  <p class="why">You now know the heart of ThePrimeagen's init.lua. Go forth and edit at the speed of thought.</p>`,
+  check:()=>S.keyLog.includes("<leader> ")}),
+];

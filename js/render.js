@@ -9,8 +9,9 @@ function shake(){ const ed=document.getElementById("editor"); ed.classList.add("
   setTimeout(()=>ed.classList.remove("shake"),300); }
 
 /* ---------- rendering ---------- */
-function render(){
-  const buf=document.getElementById("buf");
+/* Build the HTML for the current buffer's lines (cursor + selection). Pulled
+   out so a window split can render the same buffer into two panes. */
+function renderBufHTML(){
   let html="";
   for(let r=0;r<S.lines.length;r++){
     const isCur=r===S.cursor.row;
@@ -41,14 +42,34 @@ function render(){
     html+=`<div class="row${isCur?' cur':''}" data-r="${r}"><span class="gut">${relnum}</span>`+
           `<span class="txt">${body}<span class="ccline" style="left:${80}ch"></span></span></div>`;
   }
-  buf.innerHTML=html;
+  return html;
+}
+function render(){
+  if(S.modesSeen) S.modesSeen.add(S.mode);
+  const buf=document.getElementById("buf");
+  const rows=renderBufHTML();
+  let tab="";
+  if(S.tabs&&S.tabs.length>1){
+    tab=`<div class="tabline">`+S.tabs.map((t,i)=>
+      `<span class="tab${i===S.tabIdx?' acttab':''}">${esc(" "+(i+1)+" "+t.name+" ")}</span>`).join("")+
+      `<span class="tabfill"></span></div>`;
+  }
+  if(S.split){
+    const cls=S.split.type==="v"?"v":"h";
+    buf.innerHTML=tab+`<div class="split ${cls}">`+
+      `<div class="bufpane${S.split.active===0?' actpane':''}">${rows}</div>`+
+      `<div class="bufpane${S.split.active===1?' actpane':''}">${rows}</div></div>`;
+  }else buf.innerHTML=tab+rows;
   // status line
   const mb=document.getElementById("modeBox");
   const map={normal:["NORMAL","normal"],insert:["INSERT","insert"],visual:["VISUAL","visual"],vline:["V-LINE","vline"],cmd:["COMMAND","cmd"]};
   const[label,cls]=map[S.mode]; mb.textContent=label; mb.className="mode "+cls;
   document.getElementById("stPos").textContent=(S.cursor.row+1)+":"+(S.cursor.col+1);
+  document.getElementById("stFile").textContent = S.buffers? ("~/"+S.buffers[S.bufIdx].name) : "~/init.lua";
   const cl=document.getElementById("cmdline");
-  cl.textContent = S.cmd? (S.cmd.type==="search"?"/"+S.cmd.text : `:%s/${S.cmd.word}/${S.cmd.text}`) : "";
+  cl.textContent = S.cmd? (S.cmd.type==="search"?"/"+S.cmd.text
+    : S.cmd.type==="ex"?":"+S.cmd.text
+    : `:%s/${S.cmd.word}/${S.cmd.text}`) : "";
   document.getElementById("kc").textContent=S.keys;
   // center if requested
   const curRow=buf.querySelector(".row.cur");

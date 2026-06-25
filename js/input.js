@@ -3,7 +3,7 @@ function keyName(e){
   const k=e.key;
   if(e.ctrlKey){
     const m={"d":"<C-d>","u":"<C-u>","p":"<C-p>","n":"<C-n>","y":"<C-y>","c":"<C-c>",
-             "k":"<C-k>","j":"<C-j>","f":"<C-f>","e":"<C-e>"," ":"<C-Space>"};
+             "k":"<C-k>","j":"<C-j>","f":"<C-f>","e":"<C-e>","w":"<C-w>"," ":"<C-Space>"};
     if(m[k.toLowerCase()])return m[k.toLowerCase()];
   }
   return k;
@@ -24,7 +24,7 @@ function onKey(e){
   }
 
   // global ctrl maps that work in normal/visual
-  const handledCtrl=["<C-d>","<C-u>","<C-p>","<C-k>","<C-j>","<C-f>","<C-e>","<C-y>","<C-n>","<C-Space>"];
+  const handledCtrl=["<C-d>","<C-u>","<C-p>","<C-k>","<C-j>","<C-f>","<C-e>","<C-y>","<C-n>","<C-w>","<C-Space>"];
   if(handledCtrl.includes(kn) && (S.mode==="normal"||S.mode==="visual"||S.mode==="vline")){
     e.preventDefault(); ctrlMap(kn); afterKey(); return;
   }
@@ -51,6 +51,7 @@ function ctrlMap(kn){
     case"<C-j>": S.cursor.row=clamp(S.cursor.row-1,0,S.lines.length-1);clampCursor();centerCursor();log("<C-j>");toast("<C-j> → :cprev (quickfix)");break;
     case"<C-f>": toast("<C-f> → tmux-sessionizer (project switcher)");log("<C-f>");break;
     case"<C-e>": openPop("harpoon");toast("<C-e> → harpoon quick menu");log("<C-e>");break;
+    case"<C-w>": S.winPending=true; log("<C-w>"); toast("<C-w> — window cmd next: w switch · q close · v/s split");break;
     default: log(kn);
   }
 }

@@ -57,6 +57,113 @@ L({title:"Top & bottom: gg / G",
   <div class="card do"><h3>Goal</h3>Press <kbd>G</kbd> then <kbd>gg</kbd> — end back on line 1.</div>`,
   check:()=>S.keyLog.includes("G") && S.keyLog.includes("gg") && S.cursor.row===0}),
 
+{group:"Core motions & edits"},
+L({title:"Find a char: f / t",
+  goal:"Jump straight onto the ( with f(",
+  buf:["return foo(bar, baz, qux)"], cur:{row:0,col:0}, par:1,
+  lesson:`<h2><kbd>f</kbd> <kbd>t</kbd> <kbd>F</kbd> <kbd>T</kbd> — fly along a line</h2><div class="sub">core vim</div>
+  <p>These jump to a character on the current line — far faster than tapping <kbd>ñ</kbd> repeatedly.</p>
+  <ul class="keylist">
+   <li><kbd>f x</kbd><span class="d"><b>onto</b> the next <code>x</code></span></li>
+   <li><kbd>t x</kbd><span class="d"><b>just before</b> the next <code>x</code></span></li>
+   <li><kbd>F x</kbd> · <kbd>T x</kbd><span class="d">same, but searching backward</span></li>
+   <li><kbd>;</kbd> · <kbd>,</kbd><span class="d">repeat the last find forward / backward</span></li></ul>
+  <div class="card do"><h3>Goal</h3>Press <kbd>f</kbd> then <kbd>(</kbd> to land on the opening paren.</div>
+  <p class="why">Pair them with operators too: <code>dt)</code> deletes up to the next <code>)</code>, <code>cf,</code> changes through the next comma.</p>`,
+  check:()=>curLine()[S.cursor.col]==="(" && S.keyLog.includes("f(")}),
+
+L({title:"Text objects: ci( ci\"",
+  goal:"Change what's inside the quotes with ci\" — type bye",
+  buf:['greet("hello", name)'], cur:{row:0,col:8}, par:null,
+  lesson:`<h2>Inner / around text objects</h2><div class="sub">core vim — works with any operator</div>
+  <p>A text object is a <i>noun</i> you give an operator (<kbd>d</kbd>/<kbd>c</kbd>/<kbd>y</kbd>): <kbd>i</kbd> = <b>inner</b>, <kbd>a</kbd> = <b>around</b>.</p>
+  <ul class="keylist">
+   <li><kbd>i w</kbd> · <kbd>a w</kbd><span class="d">inner / a word</span></li>
+   <li><kbd>i "</kbd> · <kbd>a "</kbd><span class="d">inside / around quotes</span></li>
+   <li><kbd>i (</kbd> · <kbd>i {</kbd> · <kbd>i [</kbd><span class="d">inside brackets/braces</span></li></ul>
+  <div class="card"><code>ciw</code> change a word · <code>ci(</code> change inside parens · <code>ya"</code> yank a string · <code>di{</code> empty a block</div>
+  <div class="card do"><h3>Goal</h3>Cursor is inside the string. Press <kbd>c</kbd> <kbd>i</kbd> <kbd>"</kbd>, type <code>bye</code>, then <kbd>Ctrl</kbd>+<kbd>c</kbd>.</div>`,
+  check:()=>!curLine().includes("hello") && S.keyLog.includes('ci"')}),
+
+L({title:"Replace a char: r",
+  goal:"Fix the typo: turn lel into let with r t",
+  buf:["lel = require('telescope')"], cur:{row:0,col:2}, par:1,
+  lesson:`<h2><kbd>r</kbd> — replace one character</h2><div class="sub">core vim</div>
+  <p><kbd>r</kbd> then a character overwrites the one under the cursor and drops you straight back in NORMAL — no mode change, no <kbd>Esc</kbd>.</p>
+  <div class="card do"><h3>Goal</h3>The cursor sits on the second <code>l</code> of <code>lel</code>. Press <kbd>r</kbd> then <kbd>t</kbd>.</div>
+  <p class="why">Big brother <kbd>R</kbd> enters <b>Replace</b> mode and overtypes until you press <kbd>Esc</kbd>.</p>`,
+  check:()=>S.lines[0]==="let = require('telescope')" && S.keyLog.includes("r")}),
+
+L({title:"Repeat with the dot: .",
+  goal:"Turn xxxxx into ===== : r= once, then ñ and . across",
+  buf:["xxxxx = config"], cur:{row:0,col:0}, par:9,
+  lesson:`<h2><kbd>.</kbd> — repeat your last change</h2><div class="sub">core vim — the superpower</div>
+  <p>The dot command replays your most recent edit. Make a small, repeatable change once, then sprint with <kbd>.</kbd>.</p>
+  <div class="card do"><h3>Goal</h3>Press <kbd>r</kbd> <kbd>=</kbd> to turn the first <code>x</code> into <code>=</code>. Then alternate <kbd>ñ</kbd> (right) and <kbd>.</kbd> until all five are <code>=</code>.</div>
+  <p class="why">"Make the change repeatable, then repeat it" is the core of editing fast in vim — it composes with motions, finds and text objects.</p>`,
+  check:()=>S.lines[0].startsWith("=====") && S.keyLog.filter(k=>k===".").length>=2}),
+
+{group:"Modes, buffers & windows"},
+L({title:"The mode system",
+  goal:"Visit INSERT, VISUAL and COMMAND, then return to NORMAL",
+  buf:["-- Neovim is modal: each mode remaps every key.","-- NORMAL: move around and run operators.","-- INSERT: type text.   VISUAL: select text.","-- COMMAND: run : commands (:w, :q, :vsplit…).","local modes = { 'normal', 'insert', 'visual' }"], cur:{row:4,col:0}, par:null,
+  lesson:`<h2>Modes — the heart of vim</h2><div class="sub">core concept · watch the status line</div>
+  <p>In a modal editor the same key does different things per mode. The coloured box bottom-left always tells you where you are.</p>
+  <ul class="keylist">
+   <li><kbd>i</kbd> / <kbd>a</kbd> / <kbd>o</kbd><span class="d">enter <b>INSERT</b> (type text)</span></li>
+   <li><kbd>v</kbd> / <kbd>V</kbd> / <kbd>Ctrl-v</kbd><span class="d"><b>VISUAL</b> char / line / block</span></li>
+   <li><kbd>:</kbd><span class="d"><b>COMMAND</b>-line for ex commands</span></li>
+   <li><kbd>Ctrl-c</kbd> / <kbd>Esc</kbd><span class="d">back to <b>NORMAL</b> from anywhere</span></li></ul>
+  <div class="card do"><h3>Goal</h3>Press <kbd>i</kbd> then <kbd>Ctrl</kbd>+<kbd>c</kbd>; <kbd>v</kbd> then <kbd>Ctrl</kbd>+<kbd>c</kbd>; <kbd>:</kbd> then <kbd>Esc</kbd>. End back in NORMAL.</div>
+  <p class="why">NORMAL is home base — you spend most time there, darting into the other modes for short bursts.</p>`,
+  check:()=>S.modesSeen.has("insert") && S.modesSeen.has("visual") && S.modesSeen.has("cmd") && S.mode==="normal"}),
+
+L({title:"Buffers",
+  goal:"List open buffers with :ls, then go to the next one with :bnext",
+  buf:["-- buffers"], cur:{row:0,col:0}, par:null,
+  buffers:[
+    {name:"init.lua",lines:["-- init.lua   (buffer 1)","require('theprimeagen')","-- a buffer is a file loaded into memory"]},
+    {name:"remap.lua",lines:["-- remap.lua   (buffer 2)","vim.g.mapleader = ' '","vim.keymap.set('n', '<leader>pv', vim.cmd.Ex)"]},
+    {name:"set.lua",lines:["-- set.lua   (buffer 3)","vim.opt.nu = true","vim.opt.relativenumber = true"]},
+  ],
+  lesson:`<h2>Buffers — files held in memory</h2><div class="sub">core concept</div>
+  <p>Opening a file (<code>:e</code>, Telescope, harpoon) loads it into a <b>buffer</b>. You can have dozens open at once; a buffer doesn't need to be visible in a window.</p>
+  <ul class="keylist">
+   <li><kbd>:ls</kbd><span class="d">list every open buffer</span></li>
+   <li><kbd>:bn</kbd> / <kbd>:bp</kbd><span class="d">next / previous buffer</span></li>
+   <li><kbd>:b 2</kbd><span class="d">jump to buffer 2 (or <code>:b set</code> by name)</span></li>
+   <li><kbd>:bd</kbd><span class="d">delete (close) a buffer</span></li></ul>
+  <div class="card do"><h3>Goal</h3>Press <kbd>:</kbd><code>ls</code><kbd>Enter</kbd> to see the list, close it, then <kbd>:</kbd><code>bnext</code><kbd>Enter</kbd>. Watch <code>~/…</code> in the status line change.</div>
+  <p class="why">This config rarely types <code>:bnext</code> — harpoon and Telescope jump between hot buffers instead. But knowing the buffer list is fundamental.</p>`,
+  check:()=>S.bufIdx===1 && S.keyLog.includes(":bnext")}),
+
+L({title:"Windows (splits)",
+  goal:"Split with :vsplit, then hop to the other window",
+  buf:["local function setup()","    require('telescope').setup({})","    require('harpoon').setup({})","end"], cur:{row:0,col:0}, par:null,
+  lesson:`<h2>Windows — viewports onto buffers</h2><div class="sub">the integrated window system</div>
+  <p>A <b>window</b> (or split) is a view into a buffer. Several windows can show the same buffer or different ones — edit in either pane and the buffer updates everywhere.</p>
+  <ul class="keylist">
+   <li><kbd>:vsplit</kbd> · <kbd>:split</kbd><span class="d">split vertically / horizontally</span></li>
+   <li><kbd>Ctrl-w</kbd> <kbd>h j k l</kbd><span class="d">move between windows</span></li>
+   <li><kbd>Ctrl-w</kbd> <kbd>q</kbd> · <kbd>Ctrl-w</kbd> <kbd>o</kbd><span class="d">close this / keep only this</span></li>
+   <li><kbd>Ctrl-w</kbd> <kbd>=</kbd><span class="d">equalize sizes</span></li></ul>
+  <div class="card do"><h3>Goal</h3>Run <kbd>:</kbd><code>vsplit</code><kbd>Enter</kbd>, then switch panes with <kbd>:</kbd><code>wincmd w</code><kbd>Enter</kbd> (or <kbd>Ctrl-w</kbd> <kbd>w</kbd> — your browser may steal <kbd>Ctrl-w</kbd>).</div>
+  <p class="why">ThePrimeagen leans on <b>tmux</b> (<kbd>Ctrl-f</kbd> sessionizer) for big layouts, so his config keeps native splits mostly default.</p>`,
+  check:()=>S.split && S.keyLog.includes(":vsplit") && S.keyLog.includes("<C-w>w")}),
+
+L({title:"Tabs",
+  goal:"Open a tab with :tabnew, then switch with gt",
+  buf:["-- A tab page is a whole window LAYOUT,","-- not a single file (unlike VS Code tabs).","-- :tabnew opens one · gt / gT cycle them."], cur:{row:0,col:0}, par:null,
+  lesson:`<h2>Tab pages — saved layouts</h2><div class="sub">core concept · often misunderstood</div>
+  <p>A vim <b>tab</b> is not "one file" — it's a saved arrangement of windows. Think of tabs as workspaces, and buffers as the files inside them.</p>
+  <ul class="keylist">
+   <li><kbd>:tabnew</kbd><span class="d">open a new tab page</span></li>
+   <li><kbd>g t</kbd> / <kbd>g T</kbd><span class="d">next / previous tab</span></li>
+   <li><kbd>:tabclose</kbd><span class="d">close the current tab</span></li></ul>
+  <div class="card do"><h3>Goal</h3>Press <kbd>:</kbd><code>tabnew</code><kbd>Enter</kbd> — a tabline appears up top — then press <kbd>g</kbd><kbd>t</kbd> to cycle.</div>
+  <p class="why">Because buffers + harpoon already cover "many files", most vimmers keep only a couple of tabs (or none).</p>`,
+  check:()=>S.tabs && S.tabs.length>=2 && S.keyLog.includes("gt")}),
+
 {group:"The Primeagen Touch"},
 L({title:"Centered scrolling",
   goal:"Press <C-d> to fly half a page down — watch it re-center",

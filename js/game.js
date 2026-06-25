@@ -9,6 +9,12 @@ function loadLevel(i){
   S.reg=lv.preReg?{...lv.preReg}:{text:"",linewise:false};
   S.sysclip=""; S.pending="";S.awaitLeader=false;S.leaderBuf="";S.cmd=null;
   S.lastSearch="";S.undo=[];S.keyLog=[];S.keys=0;S.enteredInsert=false;S.won=false;S.cmp=null;
+  S.findPending=null;S.lastFind=null;S.replacePending=false;S.dot=null;
+  S.winPending=false;S.split=null;S.tabs=null;S.tabIdx=0;S.modesSeen=new Set();
+  if(lv.buffers){ S.buffers=lv.buffers.map(b=>({name:b.name,lines:b.lines.slice()}));
+    S.bufIdx=0; S.lines=S.buffers[0].lines.slice(); }
+  else { S.buffers=null; S.bufIdx=0; }
+  if(lv.tabs){ S.tabs=lv.tabs.map(t=>({...t})); S.tabIdx=0; }
   clampCursor();
   document.getElementById("lvTitle").textContent=`Level ${i+1} / ${PLAYABLE.length} · ${lv.title}`;
   document.getElementById("lvGoal").textContent=lv.goal;

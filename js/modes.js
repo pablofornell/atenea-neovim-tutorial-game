@@ -2,12 +2,30 @@
 function setMode(m){ S.mode=m; if(m==="insert")S.enteredInsert=true; }
 
 function handleNormal(key,e){
+  // <C-w> window-command prefix: this key is the window command (w/q/v/s/…)
+  if(S.winPending){ S.winPending=false; doWinCmd(key); return; }
+  // f/F/t/T were pressed; this key is the char to find on the line
+  if(S.findPending){ const cmd=S.findPending; S.findPending=null;
+    if(key.length===1){ findChar(cmd,key); log(cmd+key); } return; }
+  // r was pressed; this key replaces the char under the cursor
+  if(S.replacePending){ S.replacePending=false; replaceChar(key); return; }
+
   // pending operators / multi-key (g, d, y, c)
   if(S.pending){
     const op=S.pending; S.pending="";
-    if(op==="g"){ if(key==="g"){motion("gg");log("gg");} return; }
-    // treesitter text object: pending like "da"/"di"/"ca"/"yi" awaiting the object char (f = @function)
-    if(/^[dyc][ai]$/.test(op)){ if(key==="f") execTextObject(op[0],op[1]); return; }
+    if(op==="g"){
+      if(key==="g"){motion("gg");log("gg");}
+      else if(key==="t"){nextTab(1);log("gt");}
+      else if(key==="T"){nextTab(-1);log("gT");}
+      return;
+    }
+    // text object: pending like "da"/"di"/"ca"/"yi" awaiting the object char.
+    // f = treesitter @function; w " ' ` ( ) b { } B [ ] = inner/around on the line.
+    if(/^[dyc][ai]$/.test(op)){
+      if(key==="f"){ execTextObject(op[0],op[1]); return; }
+      if(["w",'"',"'","`","(",")","b","{","}","B","[","]"].includes(key)){ execTextObjectChar(op[0],op[1],key); return; }
+      return;
+    }
     if(op==="d"||op==="y"||op==="c"){
       if(key==="a"||key==="i"){ S.pending=op+key; return; } // start a text object (af/if)
       // linewise double (dd/yy/cc) or simple motions
@@ -55,7 +73,17 @@ function handleNormal(key,e){
     case"G": motion("G"); log("G"); return;
     case"d":case"y":case"c": S.pending=key; return;
     case"x": snapshot(); { const l=curLine(); if(l.length){S.reg={text:l[S.cursor.col]||"",linewise:false};
-              S.lines[S.cursor.row]=l.slice(0,S.cursor.col)+l.slice(S.cursor.col+1);clampCursor();} } log("x"); return;
+              S.lines[S.cursor.row]=l.slice(0,S.cursor.col)+l.slice(S.cursor.col+1);clampCursor();} }
+              S.dot=()=>{ const ll=curLine(); if(ll.length){ snapshot();
+                S.lines[S.cursor.row]=ll.slice(0,S.cursor.col)+ll.slice(S.cursor.col+1); clampCursor(); } };
+              log("x"); return;
+    case"r": S.replacePending=true; return;
+    case"f":case"F":case"t":case"T": S.findPending=key; return;
+    case";": if(S.lastFind){ findChar(S.lastFind.cmd,S.lastFind.ch); log(";"); } return;
+    case",": if(S.lastFind){ const inv={f:"F",F:"f",t:"T",T:"t"};
+              findChar(inv[S.lastFind.cmd],S.lastFind.ch); log(","); } return;
+    case".": if(S.dot){ S.dot(); clampCursor(); log("."); } return;
+    case":": S.cmd={type:"ex",text:""}; setMode("cmd"); return;
     // swapped: i appends (after char), a inserts (before char) — inverse of stock vim
     case"i": setMode("insert"); S.cursor.col=Math.min(curLine().length,S.cursor.col+1); log("i"); return;
     case"a": setMode("insert"); log("a"); return;
@@ -154,6 +182,7 @@ function wordUnderCursor(){
 
 /* ---- visual-mode leader maps ---- */
 function handleVisual(key,e){
+  if(key==="Escape"||key==="<C-c>"){ S.mode="normal"; S.anchor=null; return; }
   if(S.awaitLeader){
     S.awaitLeader=false; const k=key; const buf=k;
     if(buf==="p"){ // greatest remap: "_dP — paste over, keep register
@@ -253,8 +282,96 @@ function handleCmd(key){
     else if(S.cmd.type==="subst"){ const w=S.cmd.word, rep=S.cmd.text; S.mode="normal";
       if(w){ snapshot(); const re=new RegExp("\\b"+w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","g");
         S.lines=S.lines.map(l=>l.replace(re,rep)); } clampCursor(); S.cmd=null; toast(`:%s/${w}/${rep}/gI`); }
+    else if(S.cmd.type==="ex"){ const t=S.cmd.text.trim(); S.mode="normal"; S.cmd=null; runEx(t); }
     return;
   }
   if(key==="Backspace"){ S.cmd.text=S.cmd.text.slice(0,-1); return; }
   if(key.length===1) S.cmd.text+=key;
 }
+
+/* ---------- replace a single char (r) ---------- */
+function replaceChar(ch){
+  if(ch.length!==1) return;            // ignore Escape, arrows, etc.
+  snapshot(); const l=curLine();
+  if(l.length) S.lines[S.cursor.row]=l.slice(0,S.cursor.col)+ch+l.slice(S.cursor.col+1);
+  S.dot=()=>{ const ll=curLine(); if(ll.length){ snapshot();
+    S.lines[S.cursor.row]=ll.slice(0,S.cursor.col)+ch+ll.slice(S.cursor.col+1); } };
+  log("r");
+}
+
+/* ---------- inner/around text objects on one line (ciw / ci" / ci( …) ---------- */
+function execTextObjectChar(op,scope,kind){
+  const span=textObjSpan(kind,scope);
+  if(!span){ toast(`no ${scope}${kind} text object here`); return; }
+  snapshot();
+  const l=curLine();
+  const empty=span.c1<span.c0;                 // e.g. ci" on an empty "" pair
+  S.reg={text:empty?"":l.slice(span.c0,span.c1+1),linewise:false};
+  if(op==="y"){ S.cursor.col=span.c0; }
+  else{
+    if(!empty) S.lines[S.cursor.row]=l.slice(0,span.c0)+l.slice(span.c1+1);
+    S.cursor.col=span.c0;
+    if(op==="c") setMode("insert");
+  }
+  clampCursor(); log(op+scope+kind);
+}
+
+/* ---------- ex command line ( : ) ---------- */
+function runEx(cmd){
+  const parts=cmd.split(/\s+/), c=parts[0], arg=parts[1];
+  if(/^(vs|vsp|vsplit)$/.test(c)){ S.split={type:"v",count:2,active:0}; log(":vsplit"); toast(":vsplit → window split (vertical)"); }
+  else if(/^(sp|split)$/.test(c)){ S.split={type:"h",count:2,active:0}; log(":split"); toast(":split → window split (horizontal)"); }
+  else if(/^(winc|wincmd)$/.test(c)){ doWinCmd(arg||"w"); }
+  else if(/^(on|only)$/.test(c)){ S.split=null; log(":only"); toast(":only → one window again"); }
+  else if(/^(bn|bnext)$/.test(c)){ switchBuf(1); log(":bnext"); }
+  else if(/^(bp|bN|bprev|bprevious)$/.test(c)){ switchBuf(-1); log(":bprev"); }
+  else if(/^(b|buffer)$/.test(c)&&arg){ switchBufTo(+arg-1); log(":b"+arg); }
+  else if(/^(ls|buffers|files)$/.test(c)){ openBufList(); log(":ls"); }
+  else if(/^(tabnew|tabe|tabedit)$/.test(c)){ newTab(); log(":tabnew"); }
+  else if(/^(tabc|tabclose)$/.test(c)){ closeTab(); log(":tabclose"); }
+  else if(/^(q|quit|clo|close)$/.test(c)){
+    if(S.split){ S.split=null; log(":q"); toast(":q → closed the window"); }
+    else if(S.tabs&&S.tabs.length>1){ closeTab(); log(":q"); }
+    else toast(":q → last window (stay in the lesson)"); }
+  else if(/^(w|write|wq|x)$/.test(c)){ toast(":"+c+" → file written"); log(":w"); }
+  else if(/^(so|source)/.test(c)){ toast(":so → re-sourced config"); log(":so"); }
+  else if(c!==""){ toast(":"+cmd+"  — not wired in this lesson"); log(":"+c); }
+}
+
+/* ---------- buffers ---------- */
+function syncBuf(){ if(S.buffers) S.buffers[S.bufIdx].lines=S.lines.slice(); }
+function loadBuf(){ S.lines=S.buffers[S.bufIdx].lines.slice(); S.cursor={row:0,col:0}; clampCursor(); }
+function switchBuf(dir){ if(!S.buffers){ toast(":b… → only ~/init.lua is open"); return; }
+  syncBuf(); S.bufIdx=(S.bufIdx+dir+S.buffers.length)%S.buffers.length; loadBuf();
+  toast(":b"+(S.bufIdx+1)+" → "+S.buffers[S.bufIdx].name); }
+function switchBufTo(i){ if(!S.buffers||i<0||i>=S.buffers.length) return;
+  syncBuf(); S.bufIdx=i; loadBuf(); toast(":b"+(i+1)+" → "+S.buffers[S.bufIdx].name); }
+function openBufList(){
+  if(!S.buffers){ toast(":ls → only ~/init.lua is open"); return; }
+  document.getElementById("popTitle").textContent=":ls — buffer list";
+  document.getElementById("popFoot").textContent=":bn next · :bp prev · :b N jump · :bd delete";
+  document.getElementById("popBody").innerHTML=S.buffers.map((b,i)=>
+    `<div class="poprow${i===S.bufIdx?' sel':''}">${esc(`${i+1}${i===S.bufIdx?' %a ':'   '} "${b.name}"`)}</div>`).join("");
+  document.getElementById("pop").classList.add("show");
+  S.popOpen=true; S.popKind="buflist";
+}
+
+/* ---------- windows (splits) ---------- */
+function doWinCmd(key){
+  if(!S.split){ toast("<C-w> → split first with :vsplit / :split"); return; }
+  if(["w","l","h","j","k","ñ"].includes(key)){
+    S.split.active=(S.split.active+1)%S.split.count;
+    log("<C-w>w"); toast("<C-w> → window "+(S.split.active+1));
+  }else if(key==="q"||key==="c"){ S.split=null; log("<C-w>q"); toast("<C-w>q → closed the window"); }
+  else if(key==="v"){ S.split={type:"v",count:2,active:0}; log("<C-w>v"); toast("<C-w>v → vertical split"); }
+  else if(key==="s"){ S.split={type:"h",count:2,active:0}; log("<C-w>s"); toast("<C-w>s → horizontal split"); }
+  else if(key==="o"){ S.split=null; log("<C-w>o"); toast("<C-w>o → only this window"); }
+}
+
+/* ---------- tabs ---------- */
+function newTab(){ if(!S.tabs) S.tabs=[{name:"init.lua"}];
+  S.tabs.push({name:"[No Name]"}); S.tabIdx=S.tabs.length-1; toast(":tabnew → tab "+(S.tabIdx+1)+"/"+S.tabs.length); }
+function closeTab(){ if(!S.tabs||S.tabs.length<=1){ toast(":tabclose → only one tab"); return; }
+  S.tabs.splice(S.tabIdx,1); S.tabIdx=clamp(S.tabIdx,0,S.tabs.length-1); toast(":tabclose → tab "+(S.tabIdx+1)+"/"+S.tabs.length); }
+function nextTab(dir){ if(!S.tabs||S.tabs.length<2){ toast((dir>0?"gt":"gT")+" → only one tab open"); return; }
+  S.tabIdx=(S.tabIdx+dir+S.tabs.length)%S.tabs.length; toast((dir>0?"gt":"gT")+" → tab "+(S.tabIdx+1)+"/"+S.tabs.length); }

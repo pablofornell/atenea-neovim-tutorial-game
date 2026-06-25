@@ -38,6 +38,59 @@ function doSearch(pat,dir,fromNext){
   return false;
 }
 
+/* ---------- find char on the line (f / t / F / T) ---------- */
+function findChar(cmd,ch){
+  const l=curLine(), c=S.cursor.col; let idx=-1;
+  if(cmd==="f"||cmd==="t"){
+    idx=l.indexOf(ch,c+1);
+    if(idx>=0) S.cursor.col = cmd==="t"? idx-1 : idx;
+  }else{ // F / T search backward
+    idx=l.lastIndexOf(ch,c-1);
+    if(idx>=0) S.cursor.col = cmd==="T"? idx+1 : idx;
+  }
+  S.lastFind={cmd,ch}; clampCursor();
+  return idx>=0;
+}
+
+/* ---------- text-object span on the current line ----------
+   kind: w (word) | " ' ` (quotes) | ( ) b { } B [ ] (pairs)
+   scope: i (inner) | a (around). Returns {c0,c1} or null. An empty inner span
+   comes back as c1 < c0 (e.g. ci" on ""). */
+function textObjSpan(kind,scope){
+  const l=curLine(), c=S.cursor.col;
+  if(kind==="w"){
+    const cls=ch=>!ch?-1:(/\s/.test(ch)?0:(/\w/.test(ch)?1:2));
+    const k=cls(l[c]); if(k<=0) return null;
+    let s=c,e=c;
+    while(s>0&&cls(l[s-1])===k)s--;
+    while(e<l.length-1&&cls(l[e+1])===k)e++;
+    if(scope==="a"){ let e2=e; while(e2<l.length-1&&/\s/.test(l[e2+1]))e2++;
+      if(e2>e)e=e2; else while(s>0&&/\s/.test(l[s-1]))s--; }
+    return {c0:s,c1:e};
+  }
+  if(kind==='"'||kind==="'"||kind==="`"){
+    const pos=[]; for(let i=0;i<l.length;i++) if(l[i]===kind) pos.push(i);
+    for(let i=0;i+1<pos.length;i+=2){ const a=pos[i],b=pos[i+1];
+      if(c<=b) return scope==="a"?{c0:a,c1:b}:{c0:a+1,c1:b-1}; }
+    return null;
+  }
+  const PAIR={"(":["(",")"],")":["(",")"],"b":["(",")"],
+    "{":["{","}"],"}":["{","}"],"B":["{","}"],
+    "[":["[","]"],"]":["[","]"]};
+  if(PAIR[kind]){
+    const [o,cl]=PAIR[kind];
+    let open=-1,depth=0;
+    for(let i=c;i>=0;i--){ if(i!==c&&l[i]===cl)depth++; else if(l[i]===o){ if(depth===0){open=i;break;} depth--; } }
+    if(open<0) open=l.indexOf(o,c);
+    if(open<0) return null;
+    let close=-1; depth=0;
+    for(let i=open+1;i<l.length;i++){ if(l[i]===o)depth++; else if(l[i]===cl){ if(depth===0){close=i;break;} depth--; } }
+    if(close<0) return null;
+    return scope==="a"?{c0:open,c1:close}:{c0:open+1,c1:close-1};
+  }
+  return null;
+}
+
 /* ---------- visual range ---------- */
 function visualRange(){
   let a=S.anchor, b=S.cursor;

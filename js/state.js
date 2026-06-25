@@ -12,6 +12,13 @@ const S = {
   cmd:null, lastSearch:"", searchDir:1,
   undo:[], keyLog:[], keys:0, enteredInsert:false,
   popOpen:false, popKind:null, won:false, cmp:null,
+  // motions & edits: pending find (f/t), last find for ; and ,, pending r, last
+  // change for the dot command
+  findPending:null, lastFind:null, replacePending:false, dot:null,
+  // window/buffer/tab system
+  winPending:false, split:null, buffers:null, bufIdx:0, tabs:null, tabIdx:0,
+  // set of modes the player has visited this level (for the modes lesson)
+  modesSeen:new Set(),
 };
 
 /* ---------- helpers ---------- */

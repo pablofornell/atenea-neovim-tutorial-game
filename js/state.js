@@ -8,7 +8,7 @@
 const S = {
   lines:["~"], cursor:{row:0,col:0}, mode:"normal", anchor:null,
   reg:{text:"",linewise:false}, sysclip:"",
-  pending:"", awaitLeader:false, leaderBuf:"",
+  pending:"", awaitLeader:false, leaderBuf:"", count:"",
   cmd:null, lastSearch:"", searchDir:1,
   undo:[], keyLog:[], keys:0, enteredInsert:false,
   popOpen:false, popKind:null, won:false, cmp:null,

@@ -57,6 +57,31 @@ L({title:"Top & bottom: gg / G",
   <div class="card do"><h3>Goal</h3>Press <kbd>G</kbd> then <kbd>gg</kbd> — end back on line 1.</div>`,
   check:()=>S.keyLog.includes("G") && S.keyLog.includes("gg") && S.cursor.row===0}),
 
+L({title:"Count lines: 5k / 3l",
+  goal:"Read the gutter, then jump straight onto the ★ with one counted hop",
+  buf:["-- Relative numbers: the gutter counts the rows FOR you.",
+       "local steps = {",
+       "  'one',",
+       "  'two',",
+       "  'three',   -- you start here",
+       "  'four',",
+       "  'five',",
+       "  'six',",
+       "  'seven ★', -- land here in ONE jump",
+       "  'eight',",
+       "}"],
+  cur:{row:4,col:2}, target:{row:8,col:2}, par:2,
+  lesson:`<h2>Counted jumps: <kbd>{count}</kbd> then <kbd>k</kbd>/<kbd>l</kbd></h2><div class="sub">core vim · relativenumber (set.lua)</div>
+  <p>This config sets <code>vim.opt.relativenumber = true</code>, so the gutter shows every other line's <b>distance</b> from yours — the current line shows its real number, and the rows above and below count outward <code>… 3 2 1 ↕ 1 2 3 …</code>.</p>
+  <p>Put a number in front of a vertical motion to fly that many lines in one go — no need to tap <kbd>k</kbd> over and over:</p>
+  <ul class="keylist">
+   <li><kbd>{n} k</kbd><span class="d">jump <b>n</b> lines <b>down</b></span></li>
+   <li><kbd>{n} l</kbd><span class="d">jump <b>n</b> lines <b>up</b></span></li>
+   <li><kbd>{n} G</kbd><span class="d">jump to absolute line <b>n</b></span></li></ul>
+  <div class="card do"><h3>Goal</h3>The ★ line shows a number in the gutter — that's its distance. Type that number, then <kbd>k</kbd> (down) to land on it in a single hop. Watch the count appear bottom-right as you type it.</div>
+  <p class="why">Reading the relative number and prefixing it onto <kbd>k</kbd>/<kbd>l</kbd> is the fastest way to cross a function — far quicker than counting by eye or holding a key.</p>`,
+  check:()=>S.cursor.row===8 && S.keyLog.some(k=>/^[1-9]\d*[jk]$/.test(k))}),
+
 {group:"Core motions & edits"},
 L({title:"Find a char: f / t",
   goal:"Jump straight onto the ( with f(",

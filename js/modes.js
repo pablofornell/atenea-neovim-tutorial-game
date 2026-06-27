@@ -60,17 +60,26 @@ function handleNormal(key,e){
     return;
   }
 
+  // numeric count prefix (e.g. 5k jumps 5 lines using the relative numbers).
+  // A leading 0 is the first-column motion; 0 only counts once a count exists.
+  if(/^[0-9]$/.test(key) && !(key==="0" && !S.count)){ S.count+=key; return; }
+
   // jklñ movement remap
   { const d=remapDir(key);
     if(d===""){ toast("Use j k l ñ — h is unmapped!"); shake(); return; }
     if(d!==null) key=d; }
 
+  // consume any pending count: it multiplies the command that follows, then clears
+  const reps=S.count?Math.max(1,parseInt(S.count,10)):1, hadCount=!!S.count; S.count="";
+
   switch(key){
     case" ": S.awaitLeader=true; S.leaderBuf=""; return;     // <leader>
     case"h":case"j":case"k":case"l":case"w":case"b":case"e":
-    case"0":case"$":case"^": motion(key); log(key); return;
+    case"0":case"$":case"^": for(let i=0;i<reps;i++) motion(key); log(hadCount?reps+key:key); return;
     case"g": S.pending="g"; return;
-    case"G": motion("G"); log("G"); return;
+    case"G": if(hadCount){ S.cursor.row=clamp(reps-1,0,S.lines.length-1);
+              const ix=curLine().search(/\S/); S.cursor.col=ix<0?0:ix; clampCursor(); log(reps+"G"); }
+             else { motion("G"); log("G"); } return;
     case"d":case"y":case"c": S.pending=key; return;
     case"x": snapshot(); { const l=curLine(); if(l.length){S.reg={text:l[S.cursor.col]||"",linewise:false};
               S.lines[S.cursor.row]=l.slice(0,S.cursor.col)+l.slice(S.cursor.col+1);clampCursor();} }

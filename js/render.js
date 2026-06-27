@@ -69,7 +69,7 @@ function render(){
   const cl=document.getElementById("cmdline");
   cl.textContent = S.cmd? (S.cmd.type==="search"?"/"+S.cmd.text
     : S.cmd.type==="ex"?":"+S.cmd.text
-    : `:%s/${S.cmd.word}/${S.cmd.text}`) : "";
+    : `:%s/${S.cmd.word}/${S.cmd.text}`) : (S.count||"");   // pending count = vim's showcmd
   document.getElementById("kc").textContent=S.keys;
   // center if requested
   const curRow=buf.querySelector(".row.cur");
